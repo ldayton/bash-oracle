@@ -403,8 +403,13 @@ main (int argc, char **argv, char **env)
 #endif
 
   /* Handle --write-tests before any shell initialization */
-  if (argc == 4 && strcmp (argv[1], "--write-tests") == 0)
+  if (argc >= 2 && strcmp (argv[1], "--write-tests") == 0)
     {
+      if (argc != 4)
+        {
+          fprintf (stderr, "Usage: %s --write-tests INDIR OUTDIR\n", argv[0]);
+          exit (2);
+        }
       oracle_input_dir = argv[2];
       oracle_output_dir = argv[3];
       dump_ast = 1;

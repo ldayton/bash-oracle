@@ -444,6 +444,10 @@ executing_line_number (void)
 int
 execute_command (COMMAND *command)
 {
+#if defined (BASH_ORACLE)
+  fprintf (stderr, "FATAL: execute_command called in parse-only build\n");
+  exit (99);
+#else
   struct fd_bitmap *bitmap;
   int result;
 
@@ -467,6 +471,7 @@ execute_command (COMMAND *command)
 
   QUIT;
   return (result);
+#endif /* BASH_ORACLE */
 }
 
 /* Return 1 if TYPE is a shell control structure type. */
