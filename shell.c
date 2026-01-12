@@ -234,9 +234,14 @@ int no_line_editing = 1;	/* can't have line editing without readline */
 int dump_translatable_strings;	/* Dump strings in $"...", don't execute. */
 int dump_po_strings;		/* Dump strings in $"..." in po format */
 #endif
+#if defined (BASH_ORACLE)
+int dump_ast = 1;		/* Dump AST as s-expressions, don't execute */
+#else
 int dump_ast = 0;		/* Dump AST as s-expressions, don't execute */
+#endif
 static char *oracle_input_dir = NULL;	/* Input directory for --write-tests */
 static char *oracle_output_dir = NULL;	/* Output directory for --write-tests */
+static char *oracle_expr = NULL;	/* Expression for -e */
 int wordexp_only = 0;		/* Do word expansion only */
 int protected_mode = 0;		/* No command substitution with --wordexp */
 
@@ -402,7 +407,17 @@ main (int argc, char **argv, char **env)
   USE_VAR(saverst);
 #endif
 
-  /* Handle --write-tests before any shell initialization */
+#if defined (BASH_ORACLE)
+  /* Handle bash-oracle CLI before any shell initialization */
+  if (argc < 2 || strcmp (argv[1], "--help") == 0)
+    {
+      printf ("Usage: %s [OPTIONS] FILE\n", argv[0]);
+      printf ("  FILE                    Parse FILE and print AST to stdout\n");
+      printf ("  -e BASH                 Parse BASH code and print AST to stdout\n");
+      printf ("  --write-tests IN OUT    Convert scripts in IN dir to .tests in OUT dir\n");
+      printf ("  --help                  Show this help\n");
+      exit (argc < 2 ? 1 : 0);
+    }
   if (argc >= 2 && strcmp (argv[1], "--write-tests") == 0)
     {
       if (argc != 4)
@@ -412,9 +427,19 @@ main (int argc, char **argv, char **env)
         }
       oracle_input_dir = argv[2];
       oracle_output_dir = argv[3];
-      dump_ast = 1;
       argc = 1;  /* Hide args from shell's option parsing */
     }
+  if (argc >= 2 && strcmp (argv[1], "-e") == 0)
+    {
+      if (argc != 3)
+        {
+          fprintf (stderr, "Usage: %s -e BASH\n", argv[0]);
+          exit (2);
+        }
+      oracle_expr = argv[2];
+      argc = 1;  /* Hide args from shell's option parsing */
+    }
+#endif
 
   /* Catch early SIGINTs. */
   code = setjmp_nosigs (top_level);
@@ -858,6 +883,19 @@ main (int argc, char **argv, char **env)
     exit_shell (pretty_print_loop ());
 
   /* Read commands until exit condition. */
+  if (oracle_expr)
+    {
+      with_input_from_string (oracle_expr, "-e");
+      while (yyparse () == 0 && global_command)
+	{
+	  dump_command (global_command);
+	  printf ("\n");
+	  dispose_command (global_command);
+	  global_command = NULL;
+	}
+      exit_shell (0);
+    }
+
   if (oracle_input_dir)
     {
       DIR *dir;
@@ -905,6 +943,17 @@ main (int argc, char **argv, char **env)
 	  close (fd);
 	  src[src_len] = '\0';
 
+	  /* Check for binary file (contains null bytes) */
+	  int is_binary = 0;
+	  for (size_t i = 0; i < src_len; i++)
+	    {
+	      if (src[i] == '\0')
+		{
+		  is_binary = 1;
+		  break;
+		}
+	    }
+
 	  /* Build output path: strip extension, add .tests */
 	  dot = strrchr (ent->d_name, '.');
 	  if (dot)
@@ -934,30 +983,38 @@ main (int argc, char **argv, char **env)
 	  /* Redirect stdout to output file for AST dump */
 	  stdout = outfile;
 
-	  /* Reset parser state */
-	  if (file_count > 0)
-	    {
-	      unset_bash_input (0);
-	      EOF_Reached = 0;
-	      line_number = 0;
-	    }
-
-	  /* Parse the file */
-	  shell_script_filename = inpath;
-	  open_shell_script (shell_script_filename);
-	  set_bash_input ();
-	  parse_ok = (yyparse () == 0 && global_command != NULL);
-
-	  if (parse_ok)
-	    {
-	      dump_command (global_command);
-	      printf ("\n");
-	      success_count++;
-	    }
-	  else
+	  if (is_binary)
 	    {
 	      printf ("!error\n");
 	      error_count++;
+	    }
+	  else
+	    {
+	      /* Reset parser state */
+	      if (file_count > 0)
+		{
+		  unset_bash_input (0);
+		  EOF_Reached = 0;
+		  line_number = 0;
+		}
+
+	      /* Parse the file */
+	      shell_script_filename = inpath;
+	      open_shell_script (shell_script_filename);
+	      set_bash_input ();
+	      parse_ok = (yyparse () == 0 && global_command != NULL);
+
+	      if (parse_ok)
+		{
+		  dump_command (global_command);
+		  printf ("\n");
+		  success_count++;
+		}
+	      else
+		{
+		  printf ("!error\n");
+		  error_count++;
+		}
 	    }
 
 	  /* Restore stdout and finish file */
