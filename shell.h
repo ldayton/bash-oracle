@@ -114,6 +114,7 @@ extern const int default_compatibility_level;
 extern int running_under_emacs;
 
 extern int pretty_print_mode;
+extern int dump_ast;
 
 extern int posixly_correct;
 extern int no_line_editing;

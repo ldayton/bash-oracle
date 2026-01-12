@@ -69,6 +69,8 @@ extern int get_tty_state (void);
 #include "input.h"
 #include "execute_cmd.h"
 #include "findcmd.h"
+#include "dump_ast.h"
+#include <dirent.h>
 
 #if defined (USING_BASH_MALLOC) && defined (DEBUG) && !defined (DISABLE_MALLOC_WRAPPERS)
 #  include <malloc/shmalloc.h>
@@ -232,6 +234,9 @@ int no_line_editing = 1;	/* can't have line editing without readline */
 int dump_translatable_strings;	/* Dump strings in $"...", don't execute. */
 int dump_po_strings;		/* Dump strings in $"..." in po format */
 #endif
+int dump_ast = 0;		/* Dump AST as s-expressions, don't execute */
+static char *oracle_input_dir = NULL;	/* Input directory for --write-tests */
+static char *oracle_output_dir = NULL;	/* Output directory for --write-tests */
 int wordexp_only = 0;		/* Do word expansion only */
 int protected_mode = 0;		/* No command substitution with --wordexp */
 
@@ -260,6 +265,7 @@ static const struct {
   { "dump-po-strings", Int, &dump_po_strings, (char **)0x0 },
   { "dump-strings", Int, &dump_translatable_strings, (char **)0x0 },
 #endif
+  { "dump-ast", Int, &dump_ast, (char **)0x0 },
   { "help", Int, &want_initial_help, (char **)0x0 },
   { "init-file", Charp, (int *)0x0, &bashrc_file },
   { "login", Int, &make_login_shell, (char **)0x0 },
@@ -396,6 +402,15 @@ main (int argc, char **argv, char **env)
   USE_VAR(saverst);
 #endif
 
+  /* Handle --write-tests before any shell initialization */
+  if (argc == 4 && strcmp (argv[1], "--write-tests") == 0)
+    {
+      oracle_input_dir = argv[2];
+      oracle_output_dir = argv[3];
+      dump_ast = 1;
+      argc = 1;  /* Hide args from shell's option parsing */
+    }
+
   /* Catch early SIGINTs. */
   code = setjmp_nosigs (top_level);
   if (code)
@@ -509,6 +524,13 @@ main (int argc, char **argv, char **env)
   if (dump_translatable_strings)
     read_but_dont_execute = 1;
 #endif
+
+  if (dump_ast)
+    {
+      extern int extended_glob;
+      read_but_dont_execute = 1;
+      extended_glob = 1;  /* Enable extglob for AST dumping */
+    }
 
   if (running_setuid && privileged_mode == 0)
     disable_priv_mode ();
@@ -831,6 +853,130 @@ main (int argc, char **argv, char **env)
     exit_shell (pretty_print_loop ());
 
   /* Read commands until exit condition. */
+  if (oracle_input_dir)
+    {
+      DIR *dir;
+      struct dirent *ent;
+      char inpath[PATH_MAX], outpath[PATH_MAX];
+      int file_count = 0, success_count = 0, error_count = 0;
+      FILE *orig_stdout = stdout;
+
+      dir = opendir (oracle_input_dir);
+      if (!dir)
+	{
+	  file_error (oracle_input_dir);
+	  exit_shell (1);
+	}
+      while ((ent = readdir (dir)) != NULL)
+	{
+	  FILE *outfile;
+	  char *src, *dot;
+	  size_t src_len;
+	  int fd, parse_ok;
+	  struct stat st;
+
+	  if (ent->d_name[0] == '.')
+	    continue;
+	  snprintf (inpath, sizeof (inpath), "%s/%s", oracle_input_dir, ent->d_name);
+	  if (file_isdir (inpath))
+	    continue;
+
+	  /* Read source file */
+	  fd = open (inpath, O_RDONLY);
+	  if (fd < 0)
+	    continue;
+	  if (fstat (fd, &st) < 0 || st.st_size == 0)
+	    {
+	      close (fd);
+	      continue;
+	    }
+	  src = malloc (st.st_size + 1);
+	  if (!src)
+	    {
+	      close (fd);
+	      continue;
+	    }
+	  src_len = read (fd, src, st.st_size);
+	  close (fd);
+	  src[src_len] = '\0';
+
+	  /* Build output path: strip extension, add .tests */
+	  dot = strrchr (ent->d_name, '.');
+	  if (dot)
+	    snprintf (outpath, sizeof (outpath), "%s/%.*s.tests",
+		      oracle_output_dir, (int)(dot - ent->d_name), ent->d_name);
+	  else
+	    snprintf (outpath, sizeof (outpath), "%s/%s.tests",
+		      oracle_output_dir, ent->d_name);
+
+	  /* Open output file */
+	  outfile = fopen (outpath, "w");
+	  if (!outfile)
+	    {
+	      free (src);
+	      continue;
+	    }
+
+	  /* Write header */
+	  fprintf (outfile, "=== %s\n", ent->d_name);
+	  /* Write source (strip trailing newlines) */
+	  while (src_len > 0 && src[src_len - 1] == '\n')
+	    src[--src_len] = '\0';
+	  fprintf (outfile, "%s\n", src);
+	  fprintf (outfile, "---\n");
+	  fflush (outfile);
+
+	  /* Redirect stdout to output file for AST dump */
+	  stdout = outfile;
+
+	  /* Reset parser state */
+	  if (file_count > 0)
+	    {
+	      unset_bash_input (0);
+	      EOF_Reached = 0;
+	      line_number = 0;
+	    }
+
+	  /* Parse the file */
+	  shell_script_filename = inpath;
+	  open_shell_script (shell_script_filename);
+	  set_bash_input ();
+	  parse_ok = (yyparse () == 0 && global_command != NULL);
+
+	  if (parse_ok)
+	    {
+	      dump_command (global_command);
+	      printf ("\n");
+	      success_count++;
+	    }
+	  else
+	    {
+	      printf ("!error\n");
+	      error_count++;
+	    }
+
+	  /* Restore stdout and finish file */
+	  stdout = orig_stdout;
+	  fprintf (outfile, "---\n");
+	  fclose (outfile);
+	  free (src);
+
+	  file_count++;
+	  if (file_count % 1000 == 0)
+	    fprintf (stderr, "Processed %d files...\n", file_count);
+
+	  if (global_command)
+	    {
+	      dispose_command (global_command);
+	      global_command = NULL;
+	    }
+	}
+      closedir (dir);
+      fprintf (stderr, "Done: %d files, %d success, %d errors\n",
+	       file_count, success_count, error_count);
+      exit_shell (0);
+    }
+
   reader_loop ();
   exit_shell (last_command_exit_value);
 }

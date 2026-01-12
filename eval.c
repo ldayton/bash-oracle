@@ -43,6 +43,7 @@
 
 #include "input.h"
 #include "execute_cmd.h"
+#include "dump_ast.h"
 
 #if defined (HISTORY)
 #  include "bashhist.h"
@@ -148,6 +149,11 @@ reader_loop (void)
 	{
 	  if (interactive_shell == 0 && read_but_dont_execute)
 	    {
+	      if (dump_ast && global_command)
+		{
+		  dump_command (global_command);
+		  printf ("\n");
+		}
 	      set_exit_status (last_command_exit_value);
 	      dispose_command (global_command);
 	      global_command = (COMMAND *)NULL;
