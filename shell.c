@@ -886,12 +886,15 @@ main (int argc, char **argv, char **env)
   if (oracle_expr)
     {
       with_input_from_string (oracle_expr, "-e");
-      while (yyparse () == 0 && global_command)
+      while (yyparse () == 0 && !EOF_Reached)
 	{
-	  dump_command (global_command);
-	  printf ("\n");
-	  dispose_command (global_command);
-	  global_command = NULL;
+	  if (global_command)
+	    {
+	      dump_command (global_command);
+	      printf ("\n");
+	      dispose_command (global_command);
+	      global_command = NULL;
+	    }
 	}
       exit_shell (0);
     }
