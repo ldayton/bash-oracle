@@ -1,0 +1,10 @@
+*.o
+*.a
+bash-oracle
+bash-oracle-linux
+buildconf.h
+config.h
+config.status
+config.cache
+config.log
+Makefile

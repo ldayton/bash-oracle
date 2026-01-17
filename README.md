@@ -22,17 +22,19 @@ echo 'echo hello' | ./bash-oracle /dev/stdin
 
 Use `just` commands, not raw make:
 
-- `just build` - Build bash-oracle binary
-- `just check-binary` - Verify binary is newer than source files
-- `just check-patchfile` - Verify patchfile matches current git diff
-- `just clean` - Clean build artifacts
-- `just configure` - Run once after cloning, or after Makefile.in changes
-- `just patchfile` - Generate patch file for Parable
-- `just upload` - Upload patchfile and binary to S3 (runs checks first)
+| Target          | macOS                            | Linux                |
+| --------------- | -------------------------------- | -------------------- |
+| `build`         | native                           | fails                |
+| `build-linux`   | Docker                           | Docker               |
+| `release`       | uploads macOS binary + patchfile | fails                |
+| `release-linux` | uploads Linux binary             | uploads Linux binary |
 
-## S3
+Setup: `configure` · Cleanup: `clean`
 
-Bucket: `s3://ldayton-parable/bash-oracle/`
+## Downloads
 
-- `macos/bash-oracle` - macOS binary
-- `macos/bash-oracle.patch` - patch file
+- [macOS binary](http://ldayton-parable.s3-website-us-east-1.amazonaws.com/bash-oracle/macos/bash-oracle)
+- [Linux binary](http://ldayton-parable.s3-website-us-east-1.amazonaws.com/bash-oracle/linux/bash-oracle)
+- [Patch file](http://ldayton-parable.s3-website-us-east-1.amazonaws.com/bash-oracle/macos/bash-oracle.patch)
+
+S3 bucket: `s3://ldayton-parable/bash-oracle/`
