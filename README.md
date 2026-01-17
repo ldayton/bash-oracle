@@ -1,6 +1,6 @@
 # bash-oracle
 
-Modified bash shell that outputs AST as s-expressions instead of executing commands.
+[Patched](https://github.com/ldayton/bash-oracle) bash shell that outputs AST as s-expressions instead of executing commands.
 Used as an oracle to validate [Parable](https://github.com/ldayton/Parable)'s parser output.
 
 ## Usage
@@ -22,19 +22,25 @@ echo 'echo hello' | ./bash-oracle /dev/stdin
 
 Use `just` commands, not raw make:
 
-| Target          | macOS                            | Linux                |
-| --------------- | -------------------------------- | -------------------- |
-| `build`         | native                           | fails                |
-| `build-linux`   | Docker                           | Docker               |
-| `release`       | uploads macOS binary + patchfile | fails                |
-| `release-linux` | uploads Linux binary             | uploads Linux binary |
+| Target        | macOS                      | Linux  |
+| ------------- | -------------------------- | ------ |
+| `build`       | native                     | fails  |
+| `build-linux` | Docker                     | Docker |
+| `release`     | uploads binaries + patch   | fails  |
 
 Setup: `configure` · Cleanup: `clean`
 
 ## Downloads
 
-- [macOS binary](http://ldayton-parable.s3-website-us-east-1.amazonaws.com/bash-oracle/macos/bash-oracle)
-- [Linux binary](http://ldayton-parable.s3-website-us-east-1.amazonaws.com/bash-oracle/linux/bash-oracle)
-- [Patch file](http://ldayton-parable.s3-website-us-east-1.amazonaws.com/bash-oracle/macos/bash-oracle.patch)
+```bash
+# macOS
+curl -sSfo bash-oracle http://ldayton-parable.s3-website-us-east-1.amazonaws.com/bash-oracle/macos/bash-oracle
+chmod +x bash-oracle
 
-S3 bucket: `s3://ldayton-parable/bash-oracle/`
+# Linux
+curl -sSfo bash-oracle http://ldayton-parable.s3-website-us-east-1.amazonaws.com/bash-oracle/linux/bash-oracle
+chmod +x bash-oracle
+
+# Patch
+curl -sSfO http://ldayton-parable.s3-website-us-east-1.amazonaws.com/bash-oracle/bash-oracle.patch
+```

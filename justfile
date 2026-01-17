@@ -22,12 +22,6 @@ build-linux:
 clean:
     make clean
 
-# Generate patch file for Parable
-patchfile:
-    @echo "# Base: $(git rev-parse master)" > ~/source/Parable/tools/bash-oracle/bash-oracle.patch
-    @git diff master..HEAD >> ~/source/Parable/tools/bash-oracle/bash-oracle.patch
-    @echo "Wrote ~/source/Parable/tools/bash-oracle/bash-oracle.patch (base: $(git rev-parse --short master))"
-
 # Check macOS binary is up to date
 check-binary:
     #!/usr/bin/env bash
@@ -52,18 +46,16 @@ check-binary-linux:
     fi
     echo "Linux binary exists"
 
-# Release macOS binary + patchfile to S3 (fails on Linux)
-release: patchfile check-binary
+# Release all artifacts to S3 (macOS only)
+release: check-binary check-binary-linux
     #!/usr/bin/env bash
     if [[ "$(uname -s)" != "Darwin" ]]; then
-        echo "Error: 'just release' is macOS-only. Use 'just release-linux' instead."
+        echo "Error: 'just release' is macOS-only"
         exit 1
     fi
+    git diff master..HEAD > bash-oracle.patch
     aws s3 cp bash-oracle s3://ldayton-parable/bash-oracle/macos/
-    aws s3 cp ~/source/Parable/tools/bash-oracle/bash-oracle.patch s3://ldayton-parable/bash-oracle/macos/
-    echo "Uploaded to s3://ldayton-parable/bash-oracle/macos/"
-
-# Release Linux binary to S3
-release-linux: check-binary-linux
     aws s3 cp bash-oracle-linux s3://ldayton-parable/bash-oracle/linux/bash-oracle
-    echo "Uploaded to s3://ldayton-parable/bash-oracle/linux/"
+    aws s3 cp bash-oracle.patch s3://ldayton-parable/bash-oracle/
+    rm bash-oracle.patch
+    echo "Uploaded macos/bash-oracle, linux/bash-oracle, bash-oracle.patch"
