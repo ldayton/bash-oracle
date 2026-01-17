@@ -21,21 +21,11 @@ echo 'echo hello' | ./bash-oracle /dev/stdin
 ## Building
 
 ```bash
-just configure  # run once
-just build      # builds for current platform
-just clean      # remove build artifacts
-```
-
-## Releasing
-
-Run on each platform:
-
-```bash
-# On macOS
-just release-mac
-
-# On Linux x86_64
-just release-linux
+just configure    # run once
+just build        # build for current platform
+just check-binary # verify binary exists
+just clean        # remove build artifacts
+just release      # upload to S3 (run on each platform)
 ```
 
 ## Downloads

@@ -12,32 +12,29 @@ build:
     esac
     strip bash-oracle
 
+# Check binary exists and is current
+check-binary:
+    #!/usr/bin/env bash
+    if [[ ! -x bash-oracle ]]; then
+        echo "Error: bash-oracle not found (run 'just build')"
+        exit 1
+    fi
+    echo "Binary OK: $(file -b bash-oracle)"
+
 # Clean build artifacts
 clean:
     make clean
 
-# Release macOS binary to S3 (run on macOS)
-release-mac:
+# Release binary to S3 for current platform
+release: check-binary
     #!/usr/bin/env bash
-    if [[ "$(uname -s)" != "Darwin" ]]; then
-        echo "Error: run this on macOS"
-        exit 1
-    fi
+    case "$(uname -s)" in
+        Darwin) DIR="macos" ;;
+        Linux)  DIR="linux" ;;
+        *) echo "Unsupported OS"; exit 1 ;;
+    esac
     git diff master..HEAD > bash-oracle.patch
-    aws s3 cp bash-oracle s3://ldayton-parable/bash-oracle/macos/
-    aws s3 cp bash-oracle.patch s3://ldayton-parable/bash-oracle/macos/
+    aws s3 cp bash-oracle s3://ldayton-parable/bash-oracle/$DIR/
+    aws s3 cp bash-oracle.patch s3://ldayton-parable/bash-oracle/$DIR/
     rm bash-oracle.patch
-    echo "Uploaded macos/bash-oracle and macos/bash-oracle.patch"
-
-# Release Linux binary to S3 (run on Linux x86_64)
-release-linux:
-    #!/usr/bin/env bash
-    if [[ "$(uname -s)" != "Linux" ]]; then
-        echo "Error: run this on Linux"
-        exit 1
-    fi
-    git diff master..HEAD > bash-oracle.patch
-    aws s3 cp bash-oracle s3://ldayton-parable/bash-oracle/linux/
-    aws s3 cp bash-oracle.patch s3://ldayton-parable/bash-oracle/linux/
-    rm bash-oracle.patch
-    echo "Uploaded linux/bash-oracle and linux/bash-oracle.patch"
+    echo "Uploaded $DIR/bash-oracle and $DIR/bash-oracle.patch"
