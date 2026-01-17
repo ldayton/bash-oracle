@@ -885,8 +885,9 @@ main (int argc, char **argv, char **env)
   /* Read commands until exit condition. */
   if (oracle_expr)
     {
+      int parse_result;
       with_input_from_string (oracle_expr, "-e");
-      while (yyparse () == 0 && !EOF_Reached)
+      while ((parse_result = yyparse ()) == 0)
 	{
 	  if (global_command)
 	    {
@@ -895,8 +896,10 @@ main (int argc, char **argv, char **env)
 	      dispose_command (global_command);
 	      global_command = NULL;
 	    }
+	  if (EOF_Reached)
+	    break;
 	}
-      exit_shell (0);
+      exit_shell (parse_result != 0 ? 2 : 0);
     }
 
   if (oracle_input_dir)
