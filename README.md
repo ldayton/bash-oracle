@@ -20,27 +20,35 @@ echo 'echo hello' | ./bash-oracle /dev/stdin
 
 ## Building
 
-Use `just` commands, not raw make:
+```bash
+just configure  # run once
+just build      # builds for current platform
+just clean      # remove build artifacts
+```
 
-| Target        | macOS                      | Linux  |
-| ------------- | -------------------------- | ------ |
-| `build`       | native                     | fails  |
-| `build-linux` | Docker                     | Docker |
-| `release`     | uploads binaries + patch   | fails  |
+## Releasing
 
-Setup: `configure` · Cleanup: `clean`
+Run on each platform:
+
+```bash
+# On macOS
+just release-mac
+
+# On Linux x86_64
+just release-linux
+```
 
 ## Downloads
 
 ```bash
-# macOS
+# macOS (ARM64 and x86_64)
 curl -sSfo bash-oracle http://ldayton-parable.s3-website-us-east-1.amazonaws.com/bash-oracle/macos/bash-oracle
 chmod +x bash-oracle
 
-# Linux
+# Linux x86_64
 curl -sSfo bash-oracle http://ldayton-parable.s3-website-us-east-1.amazonaws.com/bash-oracle/linux/bash-oracle
 chmod +x bash-oracle
 
 # Patch
-curl -sSfO http://ldayton-parable.s3-website-us-east-1.amazonaws.com/bash-oracle/bash-oracle.patch
+curl -sSfO http://ldayton-parable.s3-website-us-east-1.amazonaws.com/bash-oracle/linux/bash-oracle.patch
 ```
