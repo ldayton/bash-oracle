@@ -14,6 +14,10 @@ echo 'echo hello' | ./bash-oracle /dev/stdin
 ./bash-oracle -e 'echo hello'
 # (command (word "echo") (word "hello"))
 
+# Enable extended globbing (for patterns like @(foo|bar), +(x), etc.)
+./bash-oracle --extglob -e 'echo @(foo|bar)'
+# (command (word "echo") (word "@(foo|bar)"))
+
 # Generate .tests files from a directory of scripts
 ./bash-oracle --write-tests /path/to/scripts /path/to/output
 ```

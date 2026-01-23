@@ -242,6 +242,7 @@ int dump_ast = 0;		/* Dump AST as s-expressions, don't execute */
 static char *oracle_input_dir = NULL;	/* Input directory for --write-tests */
 static char *oracle_output_dir = NULL;	/* Output directory for --write-tests */
 static char *oracle_expr = NULL;	/* Expression for -e */
+static int oracle_extglob = 0;	/* Enable extglob when set */
 int wordexp_only = 0;		/* Do word expansion only */
 int protected_mode = 0;		/* No command substitution with --wordexp */
 
@@ -414,9 +415,19 @@ main (int argc, char **argv, char **env)
       printf ("Usage: %s [OPTIONS] FILE\n", argv[0]);
       printf ("  FILE                    Parse FILE and print AST to stdout\n");
       printf ("  -e BASH                 Parse BASH code and print AST to stdout\n");
+      printf ("  --extglob               Enable extended globbing\n");
       printf ("  --write-tests IN OUT    Convert scripts in IN dir to .tests in OUT dir\n");
       printf ("  --help                  Show this help\n");
       exit (argc < 2 ? 1 : 0);
+    }
+  /* Check for --extglob flag and consume it */
+  if (argc >= 2 && strcmp (argv[1], "--extglob") == 0)
+    {
+      oracle_extglob = 1;
+      /* Shift arguments left */
+      for (int i = 1; i < argc - 1; i++)
+        argv[i] = argv[i + 1];
+      argc--;
     }
   if (argc >= 2 && strcmp (argv[1], "--write-tests") == 0)
     {
@@ -558,8 +569,9 @@ main (int argc, char **argv, char **env)
   if (dump_ast)
     {
       extern int extended_glob;
+      extern int extglob_flag;
       read_but_dont_execute = 1;
-      extended_glob = 1;  /* Enable extglob for AST dumping */
+      extended_glob = extglob_flag = oracle_extglob;
     }
 
   if (running_setuid && privileged_mode == 0)
