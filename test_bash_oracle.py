@@ -59,10 +59,23 @@ class TestExpressionFlag(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("Usage:", result.stderr)
 
-    def test_e_flag_syntax_error_exits_nonzero(self):
+    def test_e_flag_syntax_error_exits_with_code_2(self):
+        """Bug fix: -e previously exited 0 on syntax errors."""
         result = run(["-e", "if then"])
-        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.returncode, 2)
         self.assertIn("syntax error", result.stderr)
+
+    def test_e_flag_multiline_with_comments(self):
+        """Bug fix: comments caused early exit in multiline input."""
+        result = run(["-e", "# comment\necho hello\n# another comment\necho world"])
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("hello", result.stdout)
+        self.assertIn("world", result.stdout)
+
+    def test_e_flag_comment_only_input(self):
+        """Bug fix: comment-only input should succeed, not crash."""
+        result = run(["-e", "# just a comment"])
+        self.assertEqual(result.returncode, 0)
 
 
 class TestExtglobFlag(unittest.TestCase):
@@ -139,6 +152,30 @@ class TestStdinInput(unittest.TestCase):
         result = run(["/dev/stdin"], input="echo hello")
         self.assertEqual(result.returncode, 0)
         self.assertIn("echo", result.stdout)
+
+
+class TestNoExecution(unittest.TestCase):
+    """Verify commands are parsed but not executed."""
+
+    def test_touch_does_not_create_file(self):
+        """Commands should be parsed, not executed."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            testfile = Path(tmpdir) / "should_not_exist.txt"
+            result = run(["-e", f"touch {testfile}"])
+            self.assertEqual(result.returncode, 0)
+            self.assertFalse(testfile.exists())
+
+    def test_rm_does_not_delete_file(self):
+        """Destructive commands should not execute."""
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            f.write(b"test content")
+            f.flush()
+            try:
+                result = run(["-e", f"rm {f.name}"])
+                self.assertEqual(result.returncode, 0)
+                self.assertTrue(Path(f.name).exists())
+            finally:
+                os.unlink(f.name)
 
 
 if __name__ == "__main__":
