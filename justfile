@@ -1,3 +1,7 @@
+# Run tests
+test:
+    python3 -m unittest test_bash_oracle -v
+
 # Configure (run once, or after Makefile.in changes)
 configure:
     ./configure
