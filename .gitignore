@@ -1,6 +1,7 @@
 # don't push out -i
 -i
 
+__pycache__/
 *.save
 .DS_Store
 .DS_Store?

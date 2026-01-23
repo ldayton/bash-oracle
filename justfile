@@ -51,18 +51,22 @@ clean:
 
 # Release mac binary to S3
 release-mac: check-binary
-    git diff master..HEAD > bash-oracle.patch
+    #!/usr/bin/env bash
+    patch=$(mktemp)
+    git diff master..HEAD > "$patch"
     aws s3 cp bash-oracle s3://ldayton-parable/bash-oracle/macos/
-    aws s3 cp bash-oracle.patch s3://ldayton-parable/bash-oracle/macos/
-    rm bash-oracle.patch
+    aws s3 cp "$patch" s3://ldayton-parable/bash-oracle/macos/bash-oracle.patch
+    rm "$patch"
     echo "Uploaded macos/bash-oracle and macos/bash-oracle.patch"
 
 # Release linux binary to S3
 release-linux: check-binary
-    git diff master..HEAD > bash-oracle.patch
+    #!/usr/bin/env bash
+    patch=$(mktemp)
+    git diff master..HEAD > "$patch"
     aws s3 cp bash-oracle-linux s3://ldayton-parable/bash-oracle/linux/bash-oracle
-    aws s3 cp bash-oracle.patch s3://ldayton-parable/bash-oracle/linux/
-    rm bash-oracle.patch
+    aws s3 cp "$patch" s3://ldayton-parable/bash-oracle/linux/bash-oracle.patch
+    rm "$patch"
     echo "Uploaded linux/bash-oracle and linux/bash-oracle.patch"
 
 # Release both platforms in parallel
