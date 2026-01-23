@@ -21,11 +21,14 @@ echo 'echo hello' | ./bash-oracle /dev/stdin
 ## Building
 
 ```bash
-just configure    # run once
-just build        # build for current platform
-just check-binary # verify binary exists
+just configure    # run once (mac only)
+just build        # build mac binary (alias for build-mac)
+just build-mac    # build mac binary
+just build-linux  # build linux binary via Docker (x86-64)
+just build-all    # build both in parallel
+just check-binary # verify both binaries exist
 just clean        # remove build artifacts
-just release      # upload to S3 (run on each platform)
+just release      # upload both to S3 in parallel
 ```
 
 ## Downloads
