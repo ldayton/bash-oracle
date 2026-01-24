@@ -181,6 +181,29 @@ class TestInfiniteLoopRegression(unittest.TestCase):
         self.assertEqual(result.stderr.count("syntax error"), 1)
 
 
+class TestExitCodeConsistency(unittest.TestCase):
+    """Exit codes should be consistent between -e flag and file mode (issue #3)."""
+
+    def test_parse_error_exit_code_matches_file_mode(self):
+        """Bug: -e flag returns exit code 1, file mode returns 2 for same parse error."""
+        invalid_input = "arr=(>.\ntxt)"
+        # Get exit code from file mode
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".sh", delete=False) as f:
+            f.write(invalid_input)
+            f.flush()
+            try:
+                file_result = run([f.name])
+            finally:
+                os.unlink(f.name)
+        # Get exit code from -e flag
+        e_flag_result = run(["-e", invalid_input])
+        self.assertEqual(
+            e_flag_result.returncode,
+            file_result.returncode,
+            f"-e flag returned {e_flag_result.returncode}, file mode returned {file_result.returncode}",
+        )
+
+
 class TestNoExecution(unittest.TestCase):
     """Verify commands are parsed but not executed."""
 

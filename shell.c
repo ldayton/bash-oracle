@@ -704,9 +704,9 @@ main (int argc, char **argv, char **env)
   if (code)
     {
 #if defined (BASH_ORACLE)
-      /* In oracle mode (-e), any longjmp should exit with error */
+      /* In oracle mode (-e), any longjmp should exit with error code 2 */
       if (oracle_expr)
-	exit_shell (last_command_exit_value ? last_command_exit_value : 2);
+	exit_shell (2);
 #endif
       if (code == EXITPROG || code == ERREXIT || code == EXITBLTIN)
 	exit_shell (last_command_exit_value);
