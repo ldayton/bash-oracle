@@ -154,6 +154,33 @@ class TestStdinInput(unittest.TestCase):
         self.assertIn("echo", result.stdout)
 
 
+class TestInfiniteLoopRegression(unittest.TestCase):
+    """Regression tests for infinite loop bugs (issue #1)."""
+
+    def test_process_substitution_with_bad_command_sub(self):
+        """Bug fix: >( $?()) caused infinite loop printing syntax errors."""
+        result = subprocess.run(
+            [str(BASH_ORACLE), "-e", ">( $?())"],
+            capture_output=True,
+            text=True,
+            timeout=5,  # Should complete instantly; timeout catches infinite loop
+        )
+        self.assertEqual(result.returncode, 2)
+        # Should have exactly one syntax error, not repeated infinitely
+        self.assertEqual(result.stderr.count("syntax error"), 1)
+
+    def test_process_substitution_with_bad_for(self):
+        """Bug fix: >( for ) caused infinite loop printing syntax errors."""
+        result = subprocess.run(
+            [str(BASH_ORACLE), "-e", ">( for )"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stderr.count("syntax error"), 1)
+
+
 class TestNoExecution(unittest.TestCase):
     """Verify commands are parsed but not executed."""
 
