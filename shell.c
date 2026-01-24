@@ -603,6 +603,7 @@ main (int argc, char **argv, char **env)
 
   if (forced_interactive ||		/* -i flag */
       (!command_execution_string &&	/* No -c command and ... */
+       !oracle_expr &&			/* No -e expression and ... */
        wordexp_only == 0 &&		/* No --wordexp and ... */
        ((arg_index == argc) ||		/*   no remaining args or... */
 	read_from_stdin) &&		/*   -s flag with args, and */
@@ -702,6 +703,11 @@ main (int argc, char **argv, char **env)
   code = setjmp_sigs (top_level);
   if (code)
     {
+#if defined (BASH_ORACLE)
+      /* In oracle mode (-e), any longjmp should exit with error */
+      if (oracle_expr)
+	exit_shell (last_command_exit_value ? last_command_exit_value : 2);
+#endif
       if (code == EXITPROG || code == ERREXIT || code == EXITBLTIN)
 	exit_shell (last_command_exit_value);
       else
